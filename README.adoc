@@ -1,1 +1,12 @@
-Communicate with Dovado router
+== Communicate with a Dovado router
+
+Usage
+
+  dovado = Dovado(<username>, <password>)
+  print(dovado.query_state())
+  dovado.send_sms(<telno>, <message>)
+  
+or
+
+  dovado.py <username> <passord>  # print state
+  dovado.py <username> <password> <telno> <message>  # send message
