@@ -136,11 +136,12 @@ if __name__ == '__main__':
     from sys import argv
     logging.basicConfig(level=logging.DEBUG)
     if len(argv) < 3:
-        exit(-1)
+        exit('Missing username and password')
     USERNAME = argv[1]
     PASSWORD = argv[2]
     if len(argv) == 3:
-        print(Dovado(USERNAME, PASSWORD).query_state())
+        import json
+        print(json.dumps(Dovado(USERNAME, PASSWORD).query_state(), indent=2))
     else:
         TELNO = argv[3]
         MSG = argv[4]
