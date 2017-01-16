@@ -10,6 +10,8 @@ from contextlib import contextmanager, closing
 from curses.ascii import ETB
 import telnetlib
 
+__version__ = '0.1.15'
+
 TIMEOUT = timedelta(seconds=5)
 
 _LOGGER = logging.getLogger(__name__)
