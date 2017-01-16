@@ -36,22 +36,26 @@ def _log(what, msg):
         _LOGGER.debug('%s %s', what, msg.strip().replace('\n', '\\n'))
 
 
-class Connection():
-    """Connection to the router."""
+class Dovado():
+    """Representing a Dovado router."""
 
-    def __init__(self):
-        self._telnet = None
+    def __init__(self, username, password, hostname=None, port=None):
+        self._username = username
+        self._password = password
+        self._hostname = hostname or _get_gw()
+        self._port = port or DEFAULT_PORT
+        self._connection = None
 
     def _until(self, what):
         """Wait for response."""
         what = what.encode('utf-8')
-        ret = self._telnet.read_until(what, timeout=TIMEOUT.seconds)
+        ret = self._connection.read_until(what, timeout=TIMEOUT.seconds)
         return ret.decode('ascii')
 
     def write(self, what):
         """Write data to connection."""
         _log('send', what)
-        self._telnet.write(what.encode('utf-8'))
+        self._connection.write(what.encode('utf-8'))
 
     def send(self, *cmd):
         """Send command to router."""
@@ -74,22 +78,12 @@ class Connection():
         return res
 
     @contextmanager
-    def connect(self, hostname, port):
+    def _connect(self, hostname, port):
         """Open connection to router."""
-        self._telnet = telnetlib.Telnet(hostname, port,
-                                        timeout=TIMEOUT.seconds)
-        with closing(self._telnet):
+        self._connection = telnetlib.Telnet(hostname, port,
+                                            timeout=TIMEOUT.seconds)
+        with closing(self._connection):
             yield self
-
-
-class Dovado():
-    """Representing a Dovado router."""
-
-    def __init__(self, username, password, hostname=None, port=None):
-        self._username = username
-        self._password = password
-        self._hostname = hostname or _get_gw()
-        self._port = port or DEFAULT_PORT
 
     @contextmanager
     def session(self):
@@ -102,8 +96,8 @@ class Dovado():
                 raise RuntimeError(reason)
 
         try:
-            with Connection().connect(self._hostname,
-                                      self._port) as conn:
+            with self._connect(self._hostname,
+                               self._port) as conn:
                 ret = conn.send('user', self._username)
                 _expect('Hello' in ret, 'User unknown')
                 ret = conn.send('pass', self._password)
@@ -124,13 +118,15 @@ class Dovado():
             conn.write('%s\n.\n' % message)
             return True
 
-    def query_state(self):
+    def update(self):
         """Update state from router."""
-        with self.session() as conn:
-            info = conn.query('info')
-            services = conn.query('services')
-            info.update(services)
-            return info
+        try:
+            with self.session() as conn:
+                state = conn.query('info')
+                state.update(conn.query('services'))
+                return state
+        except (RuntimeError, OSError):
+            return None
 
 if __name__ == '__main__':
     from sys import argv
@@ -141,7 +137,7 @@ if __name__ == '__main__':
     PASSWORD = argv[2]
     if len(argv) == 3:
         import json
-        print(json.dumps(Dovado(USERNAME, PASSWORD).query_state(), indent=2))
+        print(json.dumps(Dovado(USERNAME, PASSWORD).update(), indent=2))
     else:
         TELNO = argv[3]
         MSG = argv[4]
