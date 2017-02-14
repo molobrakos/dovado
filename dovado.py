@@ -10,7 +10,7 @@ from contextlib import contextmanager, closing
 from curses.ascii import ETB
 import telnetlib
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 TIMEOUT = timedelta(seconds=5)
 
