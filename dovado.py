@@ -107,8 +107,8 @@ class Dovado():
                 yield conn
                 conn.send('quit')
         except (RuntimeError, OSError) as error:
-            _LOGGER.error('Could not communicate with %s@%s:%d: %s',
-                          self._username, self._hostname, self._port, error)
+            _LOGGER.warning('Could not communicate with %s@%s:%d: %s',
+                            self._username, self._hostname, self._port, error)
             raise
 
     def send_sms(self, number, message):
