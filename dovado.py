@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Communicate with Dovado router
-
+u
 Usage:
   dovado.py (-h | --help)
   dovado.py --version
@@ -202,6 +202,9 @@ def main():
                         if args['--'+param]})
     if credentials['host'] == '<autodetect>':
         del credentials['host']
+
+    if 'username' and 'password' not in credentials:
+        exit('Username and password expected')
 
     dovado = Dovado(**credentials)
 
