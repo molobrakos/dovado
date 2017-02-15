@@ -132,7 +132,7 @@ class Dovado():
             info.update(services)
             return info
 
-if __name__ == '__main__':
+def main():
     from sys import argv
     logging.basicConfig(level=logging.DEBUG)
     if len(argv) < 3:
@@ -146,3 +146,7 @@ if __name__ == '__main__':
         TELNO = argv[3]
         MSG = argv[4]
         Dovado(USERNAME, PASSWORD).send_sms(TELNO, MSG)
+
+
+if __name__ == '__main__':
+    main()
