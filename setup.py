@@ -20,4 +20,3 @@ setup(name="dovado",
       extras_require={
           'console':  ['docopt'],
       })
-)
