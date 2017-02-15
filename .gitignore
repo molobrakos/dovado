@@ -1,3 +1,4 @@
+.credentials.conf
 *.egg-info
 MANIFEST
 .tox
