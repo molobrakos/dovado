@@ -9,5 +9,13 @@ setup(name="dovado",
       license="",
       author="Erik",
       author_email="Erik",
+      scripts=["dovado.py"],
       py_modules=["dovado"],
-      provides=["dovado"],)
+      provides=["dovado"],
+      install_requires=[
+          'netifaces'
+      ],
+      extras_require={
+          'console':  ['docopt'],
+      })
+)
