@@ -37,8 +37,6 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_PORT = 6435
 
-__version__ = '0.1.15'
-
 
 def _get_gw():
     """Determine ip of gateway."""
