@@ -2,11 +2,30 @@
 
 Usage
 
-  dovado = Dovado(<username>, <password>)
-  print(dovado.query_state())
+  from dovado import *
+  import json
+  dovado = Dovado(<username>, <password>, <hostname>, <port>)
+
+  res = dovado.query_str("help")
+  print(res)
+
+  res = dovado.query("info")
+  print(json.dumps(res, sort_keys=True,indent=2))
+
+  res = dovado.query("services")
+  print(json.dumps(res, sort_keys=True,indent=2))
+
+  res = dovado.query_str("traffic")
+  print(res)
+
+  res = dovado.update()
+  print(json.dumps(res, sort_keys=True,indent=2))
+
   dovado.send_sms(<telno>, <message>)
-  
+
 or
 
-  dovado.py <username> <passord>  # print state
-  dovado.py <username> <password> <telno> <message>  # send message
+  dovado.py help <username> <passord> <hostname> <port> # print help
+  dovado.py info <username> <passord> <hostname> <port> # print infos
+  dovado.py update <username> <passord> <hostname> <port> # print state (infos with services)
+  dovado.py sms <username> <password> <hostname> <port> <telno> <message>  # send message
