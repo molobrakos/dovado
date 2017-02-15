@@ -12,7 +12,7 @@ Usage:
 Options:
   -u <username>, --username=<username> Dovado router username
   -p <password>, --password=<password> Dovado router password
-  --host=<host>                        Dovado router ip [default: <autodetect>]
+  --host=<host>                        Dovado router ip [default: autodetect]
   --port=<port>                        Dovado router port [default: 6435]
   -h --help                            Show this message
   -v                                   Increase verbosity
@@ -200,7 +200,7 @@ def main():
     credentials.update({param: args['--'+param]
                         for param in ['username', 'password', 'host', 'port']
                         if args['--'+param]})
-    if credentials['host'] == '<autodetect>':
+    if credentials['host'] == 'autodetect':
         del credentials['host']
 
     if 'username' and 'password' not in credentials:
