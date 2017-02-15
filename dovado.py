@@ -15,7 +15,8 @@ Options:
   -n <host>, --host=<host>             Dovado router ip [default: <autodetect>]
   -p <port>, --port=<port>             Dovado router port [default: 6435]
   -h --help                            Show this message
-  -v,-vv                               Increase verbosity
+  -v                                   Increase verbosity
+  -vv                                  Increase verbosity even more
   --version                            Show version
 """
 
@@ -85,7 +86,7 @@ class Connection():
         _log('recv', ret)
         return ret
 
-    def query(self, cmd, parse=False):
+    def query(self, cmd, parse=True):
         """Make query and convert response into dict."""
         res = self.send(cmd)
         if not parse:
@@ -136,6 +137,7 @@ class Dovado():
         try:
             with Connection().connect(self._host,
                                       self._port) as conn:
+                _LOGGER.info('Logging in as %s', self._username)
                 ret = conn.send('user', self._username)
                 _expect('Hello' in ret, 'User unknown')
                 ret = conn.send('pass', self._password)
