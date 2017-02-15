@@ -29,7 +29,7 @@ import json
 from sys import argv
 from os import path
 
-__version__ = '0.3.0'
+__version__ = '0.4.0'
 
 TIMEOUT = timedelta(seconds=5)
 
