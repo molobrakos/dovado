@@ -12,8 +12,8 @@ Usage:
 Options:
   -u <username>, --username=<username> Dovado router username
   -p <password>, --password=<password> Dovado router password
-  -n <host>, --host=<host>             Dovado router ip [default: <autodetect>]
-  -p <port>, --port=<port>             Dovado router port [default: 6435]
+  --host=<host>                        Dovado router ip [default: <autodetect>]
+  --port=<port>                        Dovado router port [default: 6435]
   -h --help                            Show this message
   -v                                   Increase verbosity
   -vv                                  Increase verbosity even more
