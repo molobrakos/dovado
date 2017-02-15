@@ -10,7 +10,7 @@ from contextlib import contextmanager, closing
 from curses.ascii import ETB
 import telnetlib
 
-__version__ = '0.2.1'
+__version__ = '0.2.0'
 
 TIMEOUT = timedelta(seconds=5)
 
@@ -72,12 +72,19 @@ class Dovado():
         return ret
 
     def query(self, cmd):
-        """Make query and convert response into dict."""
-        res = self.send(cmd)
-        res = [item.split('=') for item in res.splitlines()]
-        res = [item[0].split(':') if len(item) == 1 else item for item in res]
-        res = {k.lower().replace('_', ' '): v for k, v in res}
-        return res
+        """Make query and convert response into dict."""        
+        with self.session() as conn:
+            res = conn.send(cmd)
+            res = [item.split('=') for item in res.splitlines()]
+            res = [item[0].split(':') if len(item) == 1 else item for item in res]
+            res = {k.lower().replace('_', ' '): v for k, v in res}
+            return res
+
+    def query_str(self, cmd):
+        """Make query and return response as raw string."""        
+        with self.session() as conn:
+            res = conn.send(cmd)
+            return res
 
     @contextmanager
     def _connect(self, hostname, port):
@@ -107,8 +114,8 @@ class Dovado():
                 yield conn
                 conn.send('quit')
         except (RuntimeError, OSError) as error:
-            _LOGGER.warning('Could not communicate with %s@%s:%d: %s',
-                            self._username, self._hostname, self._port, error)
+            _LOGGER.error('Could not communicate with %s@%s:%d: %s',
+                          self._username, self._hostname, self._port, error)
             raise
 
     def send_sms(self, number, message):
@@ -123,24 +130,34 @@ class Dovado():
     def update(self):
         """Update state from router."""
         try:
-            with self.session() as conn:
-                state = conn.query('info')
-                state.update(conn.query('services'))
-                return state
+            state = self.query('info')
+            state.update(self.query('services'))
+            return state
         except (RuntimeError, OSError):
             return None
 
 if __name__ == '__main__':
     from sys import argv
     logging.basicConfig(level=logging.DEBUG)
-    if len(argv) < 3:
-        exit('Missing username and password')
-    USERNAME = argv[1]
-    PASSWORD = argv[2]
-    if len(argv) == 3:
-        import json
-        print(json.dumps(Dovado(USERNAME, PASSWORD).update(), indent=2))
+    if len(argv) < 6:
+        exit('You should provide at least command, username, password, host and port')
+    CMD = argv[1]
+    USERNAME = argv[2]
+    PASSWORD = argv[3]
+    HOSTNAME = argv[4]
+    PORT = argv[5]
+    
+    if CMD == "help":
+        print(Dovado(USERNAME, PASSWORD, HOSTNAME, int(PORT)).query_str("help"))
+    elif CMD == "info":
+        print(Dovado(USERNAME, PASSWORD, HOSTNAME, int(PORT)).query_str("info"))
+    elif CMD == "update":
+        for key, value in (Dovado(USERNAME, PASSWORD, HOSTNAME, int(PORT)).update()).iteritems():
+            print key + ": " + value
+    elif CMD == "sms":
+        TELNO = argv[6]
+        MSG = argv[7]
+        Dovado(USERNAME, PASSWORD, HOSTNAME, int(PORT)).send_sms(TELNO, MSG)
     else:
-        TELNO = argv[3]
-        MSG = argv[4]
-        Dovado(USERNAME, PASSWORD).send_sms(TELNO, MSG)
+        print "Not yet implemented"
+        
