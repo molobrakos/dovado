@@ -2,19 +2,39 @@
 # -*- coding: utf-8 -*-
 """
 Communicate with Dovado router
+
+Usage:
+  dovado.py (-h | --help)
+  dovado.py --version
+  dovado.py [-v|-vv] [options] (state | info | services | traffic | help)
+  dovado.py [-v|-vv] [options] sms <number> <message>
+
+Options:
+  -u <username>, --username=<username> Dovado router username
+  -p <password>, --password=<password> Dovado router password
+  -n <host>, --host=<host>             Dovado router ip [default: <autodetect>]
+  -p <port>, --port=<port>             Dovado router port [default: 6435]
+  -h --help                            Show this message
+  -v,-vv                               Increase verbosity
+  --version                            Show version
 """
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from contextlib import contextmanager, closing
 from curses.ascii import ETB
 import telnetlib
+import json
+from sys import argv
+from os import path
 
 TIMEOUT = timedelta(seconds=5)
 
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_PORT = 6435
+
+__version__ = '0.1.15'
 
 
 def _get_gw():
@@ -65,18 +85,30 @@ class Connection():
         _log('recv', ret)
         return ret
 
-    def query(self, cmd):
+    def query(self, cmd, parse=False):
         """Make query and convert response into dict."""
         res = self.send(cmd)
-        res = [item.split('=') for item in res.splitlines()]
-        res = [item[0].split(':') if len(item) == 1 else item for item in res]
-        res = {k.lower().replace('_', ' '): v for k, v in res}
+        if not parse:
+            return res
+        res = [item.split('=')
+               for item in res.splitlines()]
+        res = [item[0].split(':')
+               if len(item) == 1
+               else item
+               for item in res]
+        res = [(k.lower().replace('_', ' '), v)
+               for k, v in res]
+        res = [(k, int(v))
+               if k.startswith('traffic modem') or k.startswith('sms ')
+               else (k, v)
+               for k,v in res]
+        res = dict(res)
         return res
 
     @contextmanager
-    def connect(self, hostname, port):
+    def connect(self, host, port):
         """Open connection to router."""
-        self._telnet = telnetlib.Telnet(hostname, port,
+        self._telnet = telnetlib.Telnet(host, port,
                                         timeout=TIMEOUT.seconds)
         with closing(self._telnet):
             yield self
@@ -85,24 +117,24 @@ class Connection():
 class Dovado():
     """Representing a Dovado router."""
 
-    def __init__(self, username, password, hostname=None, port=None):
+    def __init__(self, username, password, host=None, port=None):
         self._username = username
         self._password = password
-        self._hostname = hostname or _get_gw()
-        self._port = port or DEFAULT_PORT
+        self._host = host or _get_gw()
+        self._port = int(port) or DEFAULT_PORT
 
     @contextmanager
     def session(self):
         """Open connection to router."""
         _LOGGER.info('Connecting to %s@%s:%d',
-                     self._username, self._hostname, self._port)
+                     self._username, self._host, self._port)
 
         def _expect(condition, reason):
             if not condition:
                 raise RuntimeError(reason)
 
         try:
-            with Connection().connect(self._hostname,
+            with Connection().connect(self._host,
                                       self._port) as conn:
                 ret = conn.send('user', self._username)
                 _expect('Hello' in ret, 'User unknown')
@@ -110,9 +142,9 @@ class Dovado():
                 _expect('Access granted' in ret, 'Could not authenticate')
                 yield conn
                 conn.send('quit')
-        except (RuntimeError, OSError) as error:
-            _LOGGER.error('Could not communicate with %s@%s:%d: %s',
-                          self._username, self._hostname, self._port, error)
+        except (RuntimeError, IOError, OSError) as error:
+            _LOGGER.warning('Could not communicate with %s@%s:%d: %s',
+                            self._username, self._host, self._port, error)
             raise
 
     def send_sms(self, number, message):
@@ -124,29 +156,76 @@ class Dovado():
             conn.write('%s\n.\n' % message)
             return True
 
-    def query_state(self):
+    def query(self, command, parse=True):
+        with self.session() as conn:
+            return conn.query(command, parse)
+
+    @property
+    def state(self):
         """Update state from router."""
         with self.session() as conn:
+            _LOGGER.info('Querying state')
             info = conn.query('info')
             services = conn.query('services')
             info.update(services)
             return info
 
-def main():
-    from sys import argv
-    logging.basicConfig(level=logging.DEBUG)
-    if len(argv) < 3:
-        exit('Missing username and password')
-    USERNAME = argv[1]
-    PASSWORD = argv[2]
-    if len(argv) == 3:
-        import json
-        print(json.dumps(Dovado(USERNAME, PASSWORD).query_state(), indent=2))
-    else:
-        TELNO = argv[3]
-        MSG = argv[4]
-        Dovado(USERNAME, PASSWORD).send_sms(TELNO, MSG)
+def _read_credentials():
+    """Read credentials from file."""
+    try:
+        with open(path.join(path.dirname(argv[0]),
+                            '.credentials.conf')) as config:
+            return dict(x.split(': ')
+                        for x in config.read().strip().splitlines()
+                        if not x.startswith('#'))
+    except (IOError, OSError):
+        return {}
 
+
+def main():
+    import docopt
+    args = docopt.docopt(__doc__,
+                         version=__version__)
+    if args['-v'] == 2:
+        level=logging.DEBUG
+    elif args['-v']:
+        level=logging.INFO
+    else:
+        level=logging.ERROR
+
+    FORMAT = '%(asctime)s %(name)s: %(message)s'
+    logging.basicConfig(level=level, format=FORMAT, datefmt='%H:%M:%S')
+
+    credentials = _read_credentials()
+    credentials.update({param: args['--'+param]
+                        for param in ['username', 'password', 'host', 'port']
+                        if args['--'+param]})
+    if credentials['host'] == '<autodetect>':
+        del credentials['host']
+
+    dovado = Dovado(**credentials)
+
+    def emit(d):
+        if isinstance(d, dict):
+            print(json.dumps(d, indent=2))
+        else:
+            print(d)
+
+    try:
+        if args['state']:
+            emit(dovado.state)
+        elif args['help']:
+            emit(dovado.query('help', parse=False))
+        elif args['info']:
+            emit(dovado.query('info'))
+        elif args['services']:
+            emit(dovado.query('services'))
+        elif args['traffic']:
+            emit(dovado.query('traffic', parse=False))
+        elif args['sms']:
+            dovado.send_sms(args['<number>'], args['<message>'])
+    except (RuntimeError, OSError, IOError):
+        exit('Failed to contact router')
 
 if __name__ == '__main__':
     main()
