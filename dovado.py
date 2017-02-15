@@ -64,7 +64,7 @@ class Dovado():
         self._username = username
         self._password = password
         self._hostname = hostname or _get_gw()
-        self._port = int(port) or DEFAULT_PORT
+        self._port = int(port or DEFAULT_PORT)
         self._connection = None
 
     def _until(self, what):
