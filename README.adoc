@@ -3,10 +3,20 @@
 Usage
 
   dovado = Dovado(<username>, <password>)
-  print(dovado.query_state())
+  print(dovado.state)
   dovado.send_sms(<telno>, <message>)
-  
+
+  dovado = Dovado(<username>, <password>, <hostname>, <port>)
+  print(dovado.state)
+
+  print(dovado.query('help'))
+
 or
 
-  dovado.py <username> <passord>  # print state
-  dovado.py <username> <password> <telno> <message>  # send message
+  dovado.py -?
+  cp .credentials.template.conf .credentals.conf
+  <edit .credentials.conf>
+  dovado.py help
+  dovado.py state # print state
+  dovado.py sms <telno> <message>
+  dovado.py --username <username> --password <password> sms <telno> <message>

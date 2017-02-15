@@ -29,6 +29,8 @@ import json
 from sys import argv
 from os import path
 
+__version__ = '0.2.1'
+
 TIMEOUT = timedelta(seconds=5)
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,40 +59,42 @@ def _log(what, msg):
         _LOGGER.debug('%s %s', what, msg.strip().replace('\n', '\\n'))
 
 
-class Connection():
-    """Connection to the router."""
+class Dovado():
+    """Representing a Dovado router."""
 
-    def __init__(self):
-        self._telnet = None
+    def __init__(self, username, password, hostname=None, port=None):
+        self._username = username
+        self._password = password
+        self._hostname = hostname or _get_gw()
+        self._port = int(port) or DEFAULT_PORT
+        self._connection = None
 
     def _until(self, what):
         """Wait for response."""
         what = what.encode('utf-8')
-        ret = self._telnet.read_until(what, timeout=TIMEOUT.seconds)
+        ret = self._connection.read_until(what, timeout=TIMEOUT.seconds)
         return ret.decode('ascii')
 
-    def write(self, what):
+    def _write(self, what):
         """Write data to connection."""
         _log('send', what)
-        self._telnet.write(what.encode('utf-8'))
+        self._connection.write(what.encode('utf-8'))
 
-    def send(self, *cmd):
+    def _send(self, *cmd):
         """Send command to router."""
         cmd = ' '.join(cmd)
         cursor = '>> '
         ret = self._until('\n')
         _log('skip', ret)
         ret = self._until(cursor)
-        self.write(cmd + '\n')
+        self._write(cmd + '\n')
         ret = self._until(chr(ETB))[:-1]
         _log('recv', ret)
         return ret
 
-    def query(self, cmd, parse=True):
+    def _parse_query(self, cmd):
         """Make query and convert response into dict."""
-        res = self.send(cmd)
-        if not parse:
-            return res
+        res = self._send(cmd)
         res = [item.split('=')
                for item in res.splitlines()]
         res = [item[0].split(':')
@@ -107,70 +111,66 @@ class Connection():
         return res
 
     @contextmanager
-    def connect(self, host, port):
+    def _connect(self, hostname, port):
         """Open connection to router."""
-        self._telnet = telnetlib.Telnet(host, port,
-                                        timeout=TIMEOUT.seconds)
-        with closing(self._telnet):
-            yield self
-
-
-class Dovado():
-    """Representing a Dovado router."""
-
-    def __init__(self, username, password, host=None, port=None):
-        self._username = username
-        self._password = password
-        self._host = host or _get_gw()
-        self._port = int(port) or DEFAULT_PORT
+        self._connection = telnetlib.Telnet(hostname, port,
+                                            timeout=TIMEOUT.seconds)
+        with closing(self._connection):
+            yield
 
     @contextmanager
     def session(self):
         """Open connection to router."""
         _LOGGER.info('Connecting to %s@%s:%d',
-                     self._username, self._host, self._port)
+                     self._username, self._hostname, self._port)
 
         def _expect(condition, reason):
             if not condition:
                 raise RuntimeError(reason)
 
         try:
-            with Connection().connect(self._host,
-                                      self._port) as conn:
-                _LOGGER.info('Logging in as %s', self._username)
-                ret = conn.send('user', self._username)
+            with self._connect(self._hostname,
+                               self._port) as conn:
+                _LOGGER.info('Logging in as user %s', self._username)
+                ret = self._send('user', self._username)
                 _expect('Hello' in ret, 'User unknown')
-                ret = conn.send('pass', self._password)
+                ret = self._send('pass', self._password)
                 _expect('Access granted' in ret, 'Could not authenticate')
-                yield conn
-                conn.send('quit')
-        except (RuntimeError, IOError, OSError) as error:
+                yield
+                self._send('quit')
+        except (RuntimeError, OSError) as error:
             _LOGGER.warning('Could not communicate with %s@%s:%d: %s',
-                            self._username, self._host, self._port, error)
+                            self._username, self._hostname, self._port, error)
             raise
 
     def send_sms(self, number, message):
         """Send SMS through the router."""
-        with self.session() as conn:
-            res = conn.send('sms sendtxt %s' % number)
-            if 'Start sms input' not in res:
-                return False
-            conn.write('%s\n.\n' % message)
-            return True
+        with self.session():
+            res = self._send('sms sendtxt %s' % number)
+            if 'Start sms input' in res:
+                self._write('%s\n.\n' % message)
+                return True
 
-    def query(self, command, parse=True):
-        with self.session() as conn:
-            return conn.query(command, parse)
+    def query(self, command, parse_response=True):
+        with self.session():
+            if parse_response:
+                return self._parse_query(command)
+            else:
+                return self._send(command)
 
     @property
     def state(self):
         """Update state from router."""
-        with self.session() as conn:
-            _LOGGER.info('Querying state')
-            info = conn.query('info')
-            services = conn.query('services')
-            info.update(services)
-            return info
+        try:
+            with self.session():
+                _LOGGER.info('Querying state')
+                info = self._parse_query('info')
+                services = self._parse_query('services')
+                info.update(services)
+                return info
+        except (RuntimeError, OSError, IOError):
+            return None
+
 
 def _read_credentials():
     """Read credentials from file."""
@@ -217,13 +217,13 @@ def main():
         if args['state']:
             emit(dovado.state)
         elif args['help']:
-            emit(dovado.query('help', parse=False))
+            emit(dovado.query('help', parse_response=False))
         elif args['info']:
             emit(dovado.query('info'))
         elif args['services']:
             emit(dovado.query('services'))
         elif args['traffic']:
-            emit(dovado.query('traffic', parse=False))
+            emit(dovado.query('traffic', parse_response=False))
         elif args['sms']:
             dovado.send_sms(args['<number>'], args['<message>'])
     except (RuntimeError, OSError, IOError):

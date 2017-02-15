@@ -1,9 +1,11 @@
 #!/usr/bin/python
 
 from setuptools import setup
+from dovado import __version__
+
 
 setup(name="dovado",
-      version="0.1.15",
+      version=__version__,
       description="Communicate with Dovado router",
       url="https://github.com/molobrakos/dovado",
       license="",
