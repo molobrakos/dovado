@@ -129,7 +129,7 @@ class Dovado():
         try:
             with self._connect(self._hostname,
                                self._port) as conn:
-                _LOGGER.info('Logging in as user %s', self._username)
+                _LOGGER.debug('Logging in as user %s', self._username)
                 ret = self._send('user', self._username)
                 _expect('Hello' in ret, 'User unknown')
                 ret = self._send('pass', self._password)
@@ -161,7 +161,7 @@ class Dovado():
         """Update state from router."""
         try:
             with self.session():
-                _LOGGER.info('Querying state')
+                _LOGGER.debug('Querying state')
                 info = self._parse_query('info')
                 services = self._parse_query('services')
                 info.update(services)
