@@ -21,7 +21,7 @@ Options:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from contextlib import contextmanager, closing
 from curses.ascii import ETB
 import telnetlib
@@ -104,7 +104,7 @@ class Dovado():
         res = [(k, int(v))
                if k.startswith('traffic modem') or k.startswith('sms ')
                else (k, v)
-               for k,v in res]
+               for k, v in res]
         res = dict(res)
         return res
 
@@ -128,8 +128,9 @@ class Dovado():
 
         try:
             with self._connect(self._hostname,
-                               self._port) as conn:
-                _LOGGER.debug('Logging in as user %s', self._username)
+                               self._port):
+                _LOGGER.debug('Connected, logging in as user %s',
+                              self._username)
                 ret = self._send('user', self._username)
                 _expect('Hello' in ret, 'User unknown')
                 ret = self._send('pass', self._password)
@@ -150,6 +151,7 @@ class Dovado():
                 return True
 
     def query(self, command, parse_response=True):
+        """Send query to server."""
         with self.session():
             if parse_response:
                 return self._parse_query(command)
@@ -183,18 +185,19 @@ def _read_credentials():
 
 
 def main():
-    import docopt
+    """Main method."""
+    import docopt  # pylint:disable=import-error
     args = docopt.docopt(__doc__,
                          version=__version__)
     if args['-v'] == 2:
-        level=logging.DEBUG
+        level = logging.DEBUG
     elif args['-v']:
-        level=logging.INFO
+        level = logging.INFO
     else:
-        level=logging.ERROR
+        level = logging.ERROR
 
-    FORMAT = '%(asctime)s %(name)s: %(message)s'
-    logging.basicConfig(level=level, format=FORMAT, datefmt='%H:%M:%S')
+    fmt = '%(asctime)s %(name)s: %(message)s'
+    logging.basicConfig(level=level, format=fmt, datefmt='%H:%M:%S')
 
     credentials = _read_credentials()
     credentials.update({param: args['--'+param]
@@ -208,11 +211,12 @@ def main():
 
     dovado = Dovado(**credentials)
 
-    def emit(d):
-        if isinstance(d, dict):
-            print(json.dumps(d, indent=2))
+    def emit(obj):
+        """Print object."""
+        if isinstance(obj, dict):
+            print(json.dumps(obj, indent=2))
         else:
-            print(d)
+            print(obj)
 
     try:
         if args['state']:
@@ -229,6 +233,7 @@ def main():
             dovado.send_sms(args['<number>'], args['<message>'])
     except (RuntimeError, OSError, IOError):
         exit('Failed to contact router')
+
 
 if __name__ == '__main__':
     main()
