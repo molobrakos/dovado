@@ -137,7 +137,7 @@ class Dovado():
                 _expect('Access granted' in ret, 'Could not authenticate')
                 yield
                 self._send('quit')
-        except (RuntimeError, OSError) as error:
+        except (RuntimeError, OSError, IOError, EOFError) as error:
             _LOGGER.warning('Could not communicate with %s@%s:%d: %s',
                             self._username, self._hostname, self._port, error)
             raise
@@ -168,7 +168,7 @@ class Dovado():
                 services = self._parse_query('services')
                 info.update(services)
                 return info
-        except (RuntimeError, OSError, IOError):
+        except (RuntimeError, OSError, IOError, EOFError):
             return None
 
 
@@ -231,7 +231,7 @@ def main():
             emit(dovado.query('traffic', parse_response=False))
         elif args['sms']:
             dovado.send_sms(args['<number>'], args['<message>'])
-    except (RuntimeError, OSError, IOError):
+    except (RuntimeError, OSError, IOError, EOFError):
         exit('Failed to contact router')
 
 
