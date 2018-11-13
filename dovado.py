@@ -176,7 +176,7 @@ def _read_credentials():
             (dirname(argv[0]), '.credentials.conf'),
             (expanduser('~'), '.dovado.conf'),
             (environ.get('XDG_CONFIG_HOME',
-                         join(expanduser('~'), '.config')), 
+                         join(expanduser('~'), '.config')),
              'dovado.conf')]:
         try:
             print(path, filename)
