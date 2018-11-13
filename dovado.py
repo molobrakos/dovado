@@ -83,7 +83,7 @@ class Dovado():
         cmd = ' '.join(cmd)
         cursor = '>> '
         ret = self._until('\n')
-        _log('skip', ret)
+        _log('(skipping)', ret)
         ret = self._until(cursor)
         self._write(cmd + '\n')
         ret = self._until(chr(ETB))[:-1]
