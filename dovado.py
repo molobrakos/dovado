@@ -27,7 +27,8 @@ from curses.ascii import ETB
 import telnetlib
 import json
 from sys import argv
-from os import path
+from os.path import dirname, expanduser, join
+from os import environ
 
 __version__ = '0.4.1'
 
@@ -171,14 +172,21 @@ class Dovado():
 
 def _read_credentials():
     """Read credentials from file."""
-    try:
-        with open(path.join(path.dirname(argv[0]),
-                            '.credentials.conf')) as config:
-            return dict(x.split(': ')
-                        for x in config.read().strip().splitlines()
-                        if not x.startswith('#'))
-    except (IOError, OSError):
-        return {}
+    for path, filename in [
+            (dirname(argv[0]), '.credentials.conf'),
+            (expanduser('~'), '.dovado.conf'),
+            (environ.get('XDG_CONFIG_HOME',
+                         join(expanduser('~'), '.config')), 
+             'dovado.conf')]:
+        try:
+            print(path, filename)
+            with open(join(path, filename)) as config:
+                return dict(x.split(': ')
+                            for x in config.read().strip().splitlines()
+                            if not x.startswith('#'))
+        except (IOError, OSError):
+            continue
+    return {}
 
 
 def main():
