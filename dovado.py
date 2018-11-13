@@ -161,15 +161,12 @@ class Dovado():
     @property
     def state(self):
         """Update state from router."""
-        try:
-            with self.session():
-                _LOGGER.debug('Querying state')
-                info = self._parse_query('info')
-                services = self._parse_query('services')
-                info.update(services)
-                return info
-        except (RuntimeError, OSError, IOError, EOFError):
-            return None
+        with self.session():
+            _LOGGER.debug('Querying state')
+            info = self._parse_query('info')
+            services = self._parse_query('services')
+            info.update(services)
+            return info
 
 
 def _read_credentials():
@@ -231,8 +228,8 @@ def main():
             emit(dovado.query('traffic', parse_response=False))
         elif args['sms']:
             dovado.send_sms(args['<number>'], args['<message>'])
-    except (RuntimeError, OSError, IOError, EOFError):
-        exit('Failed to contact router')
+    except (RuntimeError, OSError, IOError, EOFError) as e:
+        exit('Failed to contact router: %s' % e.message)
 
 
 if __name__ == '__main__':
