@@ -154,15 +154,13 @@ class Dovado():
             res = self._send('sms sendtxt %s' % number)
             if 'Start sms input' in res:
                 self._write('%s\n.\n' % message)
-                return True
 
     def query(self, command, parse_response=True):
         """Send query to server."""
         with self.session():
             if parse_response:
                 return self._parse_query(command)
-            else:
-                return self._send(command)
+            return self._send(command)
 
     @property
     def state(self):
