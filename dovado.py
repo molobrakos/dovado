@@ -23,7 +23,12 @@ Options:
 import logging
 from datetime import timedelta
 from contextlib import contextmanager, closing
-from curses.ascii import ETB
+try:
+    import curses.ascii
+    ETB = chr(curses.ascii.ETB)
+except ImportError:
+    import unicodedata
+    ETB = unicodedata.lookup('ETB')
 import telnetlib
 import json
 from sys import argv
@@ -87,7 +92,7 @@ class Dovado():
         _log('(skipping)', ret)
         ret = self._until(cursor)
         self._write(cmd + '\n')
-        ret = self._until(chr(ETB))[:-1]
+        ret = self._until(ETB)[:-1]
         _log('recv', ret)
         return ret
 
